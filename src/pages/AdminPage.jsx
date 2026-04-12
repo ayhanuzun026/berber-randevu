@@ -12,18 +12,20 @@ import {
   FiPlus,
   FiTrash2,
   FiUsers,
+  FiImage,
 } from 'react-icons/fi';
 import {
   getAllAppointments,
   updateAppointmentStatus,
 } from '../services/appointmentService';
 import { getAllStaff, addStaff, deleteStaff, updateStaff, uploadStaffPhoto } from '../services/staffService';
+import { getGalleryImages, addGalleryImage, deleteGalleryImage } from '../services/galleryService';
 import { STATUS, STATUS_LABELS, STATUS_COLORS } from '../config/constants';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import './AdminPage.css';
 
 export default function AdminPage() {
-  const [tab, setTab] = useState('appointments'); // 'appointments' | 'staff'
+  const [tab, setTab] = useState('appointments'); // 'appointments' | 'staff' | 'gallery'
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -38,6 +40,13 @@ export default function AdminPage() {
   const [newStaffFile, setNewStaffFile] = useState(null);
   const [addingStaff, setAddingStaff] = useState(false);
 
+  // Gallery state
+  const [galleryImages, setGalleryImages] = useState([]);
+  const [galleryLoading, setGalleryLoading] = useState(true);
+  const [galleryFile, setGalleryFile] = useState(null);
+  const [galleryAlt, setGalleryAlt] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
+
   useEffect(() => {
     getAllAppointments()
       .then(setAppointments)
@@ -48,6 +57,11 @@ export default function AdminPage() {
       .then(setStaffList)
       .catch(() => setStaffList([]))
       .finally(() => setStaffLoading(false));
+
+    getGalleryImages()
+      .then(setGalleryImages)
+      .catch(() => setGalleryImages([]))
+      .finally(() => setGalleryLoading(false));
   }, []);
 
   const handleStatusChange = async (appointmentId, newStatus) => {
@@ -116,6 +130,34 @@ export default function AdminPage() {
     }
   };
 
+  const handleUploadGallery = async (e) => {
+    e.preventDefault();
+    if (!galleryFile) return;
+
+    setUploadingImage(true);
+    try {
+      const image = await addGalleryImage(galleryFile, galleryAlt.trim());
+      setGalleryImages((prev) => [image, ...prev]);
+      setGalleryFile(null);
+      setGalleryAlt('');
+    } catch {
+      alert('Fotoğraf yüklenirken bir hata oluştu.');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleDeleteGallery = async (imageId, storagePath) => {
+    if (!confirm('Bu fotoğrafı silmek istediğinize emin misiniz?')) return;
+
+    try {
+      await deleteGalleryImage(imageId, storagePath);
+      setGalleryImages((prev) => prev.filter((img) => img.id !== imageId));
+    } catch {
+      alert('Fotoğraf silinirken bir hata oluştu.');
+    }
+  };
+
   const filteredAppointments =
     filter === 'all'
       ? appointments
@@ -148,6 +190,12 @@ export default function AdminPage() {
             onClick={() => setTab('staff')}
           >
             <FiUsers /> Personel
+          </button>
+          <button
+            className={`admin__tab ${tab === 'gallery' ? 'admin__tab--active' : ''}`}
+            onClick={() => setTab('gallery')}
+          >
+            <FiImage /> Galeri
           </button>
         </div>
 
@@ -399,6 +447,72 @@ export default function AdminPage() {
                           <FiTrash2 />
                         </button>
                       </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* GALERİ TAB */}
+        {tab === 'gallery' && (
+          <>
+            <div className="admin__gallery-section">
+              <h2 className="admin__section-title">Fotoğraf Yükle</h2>
+              <form className="admin__gallery-form" onSubmit={handleUploadGallery}>
+                <div className="admin__gallery-upload">
+                  <label className="admin__gallery-upload-label">
+                    Fotoğraf Seç
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="admin__staff-upload-input"
+                      onChange={(e) => setGalleryFile(e.target.files[0] || null)}
+                    />
+                  </label>
+                  {galleryFile && (
+                    <span className="admin__staff-upload-name">{galleryFile.name}</span>
+                  )}
+                </div>
+                <input
+                  className="form-input"
+                  type="text"
+                  placeholder="Açıklama (opsiyonel)"
+                  value={galleryAlt}
+                  onChange={(e) => setGalleryAlt(e.target.value)}
+                />
+                <button
+                  className="btn btn-primary"
+                  type="submit"
+                  disabled={!galleryFile || uploadingImage}
+                >
+                  <FiPlus /> {uploadingImage ? 'Yükleniyor...' : 'Yükle'}
+                </button>
+              </form>
+            </div>
+
+            <div className="admin__gallery-section">
+              <h2 className="admin__section-title">Mevcut Fotoğraflar ({galleryImages.length})</h2>
+              {galleryLoading ? (
+                <p className="admin__empty">Yükleniyor...</p>
+              ) : galleryImages.length === 0 ? (
+                <p className="admin__empty">Henüz fotoğraf eklenmemiş.</p>
+              ) : (
+                <div className="admin__gallery-grid">
+                  {galleryImages.map((img) => (
+                    <div key={img.id} className="admin__gallery-item">
+                      <img src={img.url} alt={img.alt} />
+                      <button
+                        className="admin__gallery-delete"
+                        onClick={() => handleDeleteGallery(img.id, img.storagePath)}
+                        title="Sil"
+                      >
+                        <FiTrash2 size={16} />
+                      </button>
+                      {img.alt && (
+                        <span className="admin__gallery-alt">{img.alt}</span>
+                      )}
                     </div>
                   ))}
                 </div>

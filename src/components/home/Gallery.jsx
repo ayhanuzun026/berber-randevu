@@ -1,15 +1,18 @@
+import { useState, useEffect } from 'react';
+import { getGalleryImages } from '../../services/galleryService';
 import './Gallery.css';
 
-const GALLERY_ITEMS = [
-  { id: 1, alt: 'Saç kesimi örneği 1' },
-  { id: 2, alt: 'Sakal tıraşı örneği' },
-  { id: 3, alt: 'VIP bakım' },
-  { id: 4, alt: 'Saç kesimi örneği 2' },
-  { id: 5, alt: 'Modern saç stili' },
-  { id: 6, alt: 'Salon iç mekan' },
-];
-
 export default function Gallery() {
+  const [images, setImages] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getGalleryImages()
+      .then(setImages)
+      .catch(() => setImages([]))
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
     <section id="galeri" className="section gallery">
       <div className="container">
@@ -17,15 +20,19 @@ export default function Gallery() {
         <p className="section-subtitle">
           Çalışmalarımızdan örnekler
         </p>
-        <div className="gallery__grid">
-          {GALLERY_ITEMS.map((item) => (
-            <div key={item.id} className="gallery__item">
-              <div className="gallery__placeholder">
-                <span>{item.alt}</span>
+        {loading ? (
+          <p className="gallery__loading">Yükleniyor...</p>
+        ) : images.length === 0 ? (
+          <p className="gallery__loading">Henüz fotoğraf eklenmemiş.</p>
+        ) : (
+          <div className="gallery__grid">
+            {images.map((img) => (
+              <div key={img.id} className="gallery__item">
+                <img src={img.url} alt={img.alt} loading="lazy" />
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
