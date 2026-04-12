@@ -1,0 +1,168 @@
+.profile {
+  padding-top: calc(var(--header-height) + 2rem);
+}
+
+/* Kişisel Bilgiler */
+.profile__info {
+  max-width: 700px;
+  margin: 0 auto 2rem;
+  padding: 1.5rem;
+}
+
+.profile__info-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.profile__info-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+}
+
+.profile__info-row svg {
+  color: var(--color-accent);
+  flex-shrink: 0;
+}
+
+/* Yeni Randevu Butonu */
+.profile__action {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+/* Bölümler */
+.profile__section {
+  max-width: 700px;
+  margin: 0 auto 1.5rem;
+}
+
+.profile__section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 0.875rem 0;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 1rem;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.profile__section-header:hover {
+  color: var(--color-accent);
+}
+
+.profile__section-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.profile__section-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.profile__section-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 0.375rem;
+  background-color: var(--color-border);
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.profile__section-body {
+  animation: fadeIn 0.3s ease;
+}
+
+.profile__section-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.profile__section-empty {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: 1.5rem;
+  font-size: 0.9rem;
+}
+
+/* Randevu Kartı */
+.profile__card {
+  padding: 1.25rem;
+}
+
+.profile__card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.profile__card-header h4 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.profile__status {
+  display: inline-block;
+  padding: 0.2rem 0.625rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  border: 1px solid;
+}
+
+.profile__card-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.profile__detail {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.profile__price {
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+.profile__card-actions {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border);
+}
+
+/* Oturumu Kapat */
+.profile__logout {
+  text-align: center;
+  max-width: 700px;
+  margin: 3rem auto 0;
+  padding-top: 2rem;
+  border-top: 1px solid var(--color-border);
+}

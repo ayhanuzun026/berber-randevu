@@ -1,0 +1,488 @@
+.appointment {
+  padding-top: calc(var(--header-height) + 2rem);
+}
+
+/* Steps indicator */
+.appointment__steps {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 3rem;
+}
+
+.appointment__step {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-full);
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  transition: all var(--transition-normal);
+}
+
+.appointment__step--active {
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.appointment__step--done {
+  color: var(--color-success);
+}
+
+.appointment__step-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: var(--color-border);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.appointment__step--active .appointment__step-number {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+.appointment__step--done .appointment__step-number {
+  background-color: var(--color-success);
+  color: white;
+}
+
+.appointment__step-label {
+  display: none;
+}
+
+@media (min-width: 600px) {
+  .appointment__step-label {
+    display: inline;
+  }
+}
+
+/* Panels */
+.appointment__panel {
+  max-width: 800px;
+  margin: 0 auto;
+  animation: fadeIn 0.4s ease;
+}
+
+.appointment__panel-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: var(--color-text);
+}
+
+/* Services */
+.appointment__services {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.appointment__service-card {
+  text-align: left;
+  padding: 1.25rem;
+  background-color: var(--color-bg-card);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  color: var(--color-text);
+}
+
+.appointment__service-card:hover {
+  border-color: var(--color-border-light);
+  background-color: var(--color-bg-card-hover);
+}
+
+.appointment__service-card--selected {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-light);
+}
+
+.appointment__service-card h4 {
+  font-size: 1.05rem;
+  margin-bottom: 0.375rem;
+}
+
+.appointment__service-card p {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.75rem;
+}
+
+.appointment__service-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.appointment__service-price {
+  font-weight: 700;
+  color: var(--color-accent);
+  font-size: 1.05rem;
+}
+
+.appointment__service-duration {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.825rem;
+  color: var(--color-text-muted);
+}
+
+/* Dates */
+.appointment__dates {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 0.75rem;
+}
+
+.appointment__date-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem 0.5rem;
+  background-color: var(--color-bg-card);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  color: var(--color-text);
+}
+
+.appointment__date-card:hover {
+  border-color: var(--color-border-light);
+}
+
+.appointment__date-card--selected {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-light);
+}
+
+.appointment__date-day {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.appointment__date-num {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 0.125rem;
+}
+
+.appointment__date-month {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+/* Times — renk kodlu */
+.appointment__times {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 0.75rem;
+}
+
+.appointment__time-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.875rem;
+  border: 2px solid;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.appointment__time-card--available {
+  background-color: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: var(--color-success);
+}
+
+.appointment__time-card--available:hover {
+  background-color: rgba(16, 185, 129, 0.15);
+  border-color: var(--color-success);
+  transform: translateY(-1px);
+}
+
+.appointment__time-card--selected {
+  background-color: var(--color-success) !important;
+  border-color: var(--color-success) !important;
+  color: white !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.appointment__time-card--booked {
+  background-color: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: var(--color-error);
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Legend */
+.appointment__legend {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.825rem;
+  color: var(--color-text-secondary);
+}
+
+.appointment__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.appointment__legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 2px solid;
+}
+
+.appointment__legend-dot--available {
+  background-color: rgba(16, 185, 129, 0.15);
+  border-color: var(--color-success);
+}
+
+.appointment__legend-dot--booked {
+  background-color: rgba(239, 68, 68, 0.15);
+  border-color: var(--color-error);
+}
+
+/* Staff inline — seçilen hizmetin altında, grid full-width */
+.appointment__staff-inline {
+  grid-column: 1 / -1;
+  padding: 1.25rem;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  animation: fadeIn 0.3s ease;
+}
+
+.appointment__staff-label {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.75rem;
+}
+
+.appointment__staff-list {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.appointment__staff-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background-color: var(--color-bg-card);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  color: var(--color-text);
+  text-align: left;
+}
+
+.appointment__staff-card:hover {
+  border-color: var(--color-border-light);
+  background-color: var(--color-bg-card-hover);
+}
+
+.appointment__staff-card--selected {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-light);
+}
+
+.appointment__staff-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background-color: var(--color-surface);
+  border-radius: 50%;
+  color: var(--color-accent);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.appointment__staff-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.appointment__staff-card--selected .appointment__staff-avatar {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+.appointment__staff-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.appointment__staff-name {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.appointment__staff-title {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.appointment__loading,
+.appointment__empty {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: 2rem;
+}
+
+/* Summary */
+.appointment__summary {
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.appointment__summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.625rem 0;
+  font-size: 0.95rem;
+}
+
+.appointment__summary-item:not(:last-child) {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.appointment__summary-item span {
+  color: var(--color-text-secondary);
+}
+
+.appointment__summary-price {
+  color: var(--color-accent) !important;
+  font-size: 1.15rem;
+}
+
+/* Navigation */
+.appointment__nav {
+  display: flex;
+  align-items: center;
+  max-width: 800px;
+  margin: 2rem auto 0;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.appointment__nav-spacer {
+  flex: 1;
+}
+
+/* Error */
+.appointment__error {
+  max-width: 800px;
+  margin: 0 auto 1.5rem;
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: var(--color-error);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+/* Success */
+.appointment__success {
+  text-align: center;
+  padding: 4rem 2rem;
+  max-width: 500px;
+  margin: 0 auto;
+  padding-top: calc(var(--header-height) + 4rem);
+}
+
+.appointment__success-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  background-color: rgba(16, 185, 129, 0.1);
+  border-radius: 50%;
+  color: var(--color-success);
+  margin-bottom: 1.5rem;
+}
+
+.appointment__success h2 {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+
+.appointment__success p {
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  margin-bottom: 0.5rem;
+}
+
+.appointment__success-note {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.appointment__success-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
+@media (max-width: 480px) {
+  .appointment__services {
+    grid-template-columns: 1fr;
+  }
+
+  .appointment__staff-list {
+    grid-template-columns: 1fr;
+  }
+
+  .appointment__dates {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  }
+
+  .appointment__success-actions {
+    flex-direction: column;
+  }
+}
