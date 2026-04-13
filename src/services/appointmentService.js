@@ -3,7 +3,6 @@ import {
   addDoc,
   query,
   where,
-  orderBy,
   getDocs,
   doc,
   updateDoc,
@@ -12,6 +11,46 @@ import {
 import { db } from '../config/firebase';
 
 const COLLECTION = 'appointments';
+
+function toComparableTime(value) {
+  if (!value) return 0;
+
+  if (typeof value.toMillis === 'function') {
+    return value.toMillis();
+  }
+
+  if (value instanceof Date) {
+    return value.getTime();
+  }
+
+  if (typeof value === 'number') {
+    return value;
+  }
+
+  return 0;
+}
+
+function toAppointmentSortTime(appointment) {
+  const createdAtTime = toComparableTime(appointment.createdAt);
+
+  if (createdAtTime) {
+    return createdAtTime;
+  }
+
+  if (!appointment.date) {
+    return 0;
+  }
+
+  const time = appointment.time || '00:00';
+  const parsed = new Date(`${appointment.date}T${time}:00`);
+  const parsedTime = parsed.getTime();
+
+  return Number.isNaN(parsedTime) ? 0 : parsedTime;
+}
+
+function sortAppointmentsDesc(appointments) {
+  return appointments.sort((a, b) => toAppointmentSortTime(b) - toAppointmentSortTime(a));
+}
 
 export async function createAppointment(data) {
   const docRef = await addDoc(collection(db, COLLECTION), {
@@ -28,16 +67,12 @@ export async function getAppointmentsByUser(userId) {
     where('userId', '==', userId)
   );
   const snapshot = await getDocs(q);
-  return snapshot.docs
-    .map((d) => ({ id: d.id, ...d.data() }))
-    .sort((a, b) => (b.date > a.date ? 1 : -1));
+  return sortAppointmentsDesc(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
 }
 
 export async function getAllAppointments() {
   const snapshot = await getDocs(collection(db, COLLECTION));
-  return snapshot.docs
-    .map((d) => ({ id: d.id, ...d.data() }))
-    .sort((a, b) => (b.date > a.date ? 1 : -1));
+  return sortAppointmentsDesc(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
 }
 
 export async function updateAppointmentStatus(appointmentId, status) {

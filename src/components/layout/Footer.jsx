@@ -25,6 +25,7 @@ export default function Footer() {
               <a href="/#hizmetler">Hizmetler</a>
               <a href="/#galeri">Galeri</a>
               <Link to="/randevu">Randevu Al</Link>
+              <Link to="/gizlilik-politikasi">Gizlilik Politikasi</Link>
             </nav>
           </div>
 

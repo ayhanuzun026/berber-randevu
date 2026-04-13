@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { format, addDays, startOfDay, getDay, startOfWeek, startOfMonth } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import {
@@ -64,6 +64,57 @@ function generateNextDays(count) {
   return dates;
 }
 
+function playNotificationSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+    // Zil melodisi: 3 nota
+    const notes = [
+      { freq: 784, start: 0, dur: 0.15 },     // G5
+      { freq: 988, start: 0.18, dur: 0.15 },   // B5
+      { freq: 1175, start: 0.36, dur: 0.25 },  // D6
+    ];
+
+    notes.forEach(({ freq, start, dur }) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.3, ctx.currentTime + start);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + start + dur);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + start);
+      osc.stop(ctx.currentTime + start + dur + 0.05);
+    });
+
+    setTimeout(() => ctx.close(), 1500);
+  } catch {
+    // Ses çalınamazsa sessizce devam et
+  }
+}
+
+function buildAppointmentNotification(appointments) {
+  const [latestAppointment] = appointments;
+
+  if (!latestAppointment) {
+    return {
+      title: 'Yeni Randevu',
+      message: `${appointments.length} yeni randevu geldi.`,
+    };
+  }
+
+  const customerName = latestAppointment.customerName || 'Yeni musteri';
+  const serviceName = latestAppointment.serviceName || 'Randevu';
+  const dateLabel = latestAppointment.date || '';
+  const timeLabel = latestAppointment.time || '';
+
+  return {
+    title: appointments.length > 1 ? `${appointments.length} Yeni Randevu` : 'Yeni Randevu',
+    message: `${customerName} - ${serviceName} (${dateLabel} ${timeLabel})`.trim(),
+  };
+}
+
 export default function AdminPage() {
   const [tab, setTab] = useState('appointments');
   const [appointments, setAppointments] = useState([]);
@@ -99,12 +150,21 @@ export default function AdminPage() {
   const [revenuePeriod, setRevenuePeriod] = useState('all');
   const [revenueStaff, setRevenueStaff] = useState('all');
 
+  // Notification state
+  const [notification, setNotification] = useState(null);
+  const knownAppointmentIds = useRef(new Set());
+  const refreshInterval = useRef(null);
+  const notificationTimeout = useRef(null);
+
   const allTimeSlots = generateAllTimeSlots();
   const slotDates = generateNextDays(30);
 
   useEffect(() => {
     getAllAppointments()
-      .then(setAppointments)
+      .then((data) => {
+        setAppointments(data);
+        knownAppointmentIds.current = new Set(data.map((appointment) => appointment.id));
+      })
       .catch(() => setAppointments([]))
       .finally(() => setLoading(false));
 
@@ -118,6 +178,39 @@ export default function AdminPage() {
       .catch(() => setGalleryImages([]))
       .finally(() => setGalleryLoading(false));
   }, []);
+
+  // 30 saniyede bir otomatik yenileme
+  const refreshAppointments = useCallback(() => {
+    getAllAppointments()
+      .then((data) => {
+        const newAppointments = data.filter(
+          (appointment) => !knownAppointmentIds.current.has(appointment.id)
+        );
+
+        if (newAppointments.length > 0) {
+          const nextNotification = buildAppointmentNotification(newAppointments);
+
+          clearTimeout(notificationTimeout.current);
+          playNotificationSound();
+          setNotification(nextNotification);
+          notificationTimeout.current = window.setTimeout(() => {
+            setNotification(null);
+          }, 8000);
+        }
+
+        knownAppointmentIds.current = new Set(data.map((appointment) => appointment.id));
+        setAppointments(data);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    refreshInterval.current = setInterval(refreshAppointments, 30000);
+    return () => {
+      clearInterval(refreshInterval.current);
+      clearTimeout(notificationTimeout.current);
+    };
+  }, [refreshAppointments]);
 
   // Slot yonetimi: tarih + personel secildiginde verileri getir
   useEffect(() => {
@@ -358,6 +451,25 @@ export default function AdminPage() {
     <section className="admin section">
       <div className="container">
         <h1 className="section-title">Yönetim Paneli</h1>
+
+        {/* Bildirim kutusu */}
+        {notification && (
+          <div className="admin__notification" role="status" aria-live="polite">
+            <div className="admin__notification-content">
+              <span className="admin__notification-icon">🔔</span>
+              <div className="admin__notification-text">
+                <strong>{notification.title}</strong>
+                <p>{notification.message}</p>
+              </div>
+              <button
+                className="admin__notification-close"
+                onClick={() => setNotification(null)}
+              >
+                <FiX size={18} />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Tab navigasyon */}
         <div className="admin__tabs">

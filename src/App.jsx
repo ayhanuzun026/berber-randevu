@@ -7,6 +7,7 @@ import LoginPage from './pages/LoginPage';
 import AppointmentPage from './pages/AppointmentPage';
 import ProfilePage from './pages/ProfilePage';
 import AdminPage from './pages/AdminPage';
+import PrivacyPage from './pages/PrivacyPage';
 
 export default function App() {
   return (
@@ -41,6 +42,7 @@ export default function App() {
               }
             />
             <Route path="/randevularim" element={<Navigate to="/profil" replace />} />
+            <Route path="/gizlilik-politikasi" element={<PrivacyPage />} />
           </Route>
         </Routes>
       </AuthProvider>

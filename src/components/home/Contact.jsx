@@ -44,9 +44,16 @@ export default function Contact() {
             </div>
           </div>
           <div className="contact__map">
-            <div className="contact__map-placeholder">
-              Harita burada görünecek
-            </div>
+            <iframe
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1500!2d30.4773474!3d39.7936557!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14cc142c0b21d6fd%3A0xe5f40c301508657e!2sEski%C5%9Fehir%20Berber!5e0!3m2!1str!2str!4v1"
+              width="100%"
+              height="100%"
+              style={{ border: 0 }}
+              allowFullScreen=""
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              title="Eskişehir Berber Konum"
+            />
           </div>
         </div>
       </div>
