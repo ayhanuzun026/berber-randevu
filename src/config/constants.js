@@ -20,7 +20,7 @@ export const BUSINESS = {
 
 // Randevu ayarları
 export const APPOINTMENT = {
-  slotDuration: 30, // dakika
+  slotDuration: 15, // dakika
   maxAdvanceDays: 30, // en fazla kaç gün ileriye randevu alınabilir
   minAdvanceHours: 1, // en az kaç saat önceden randevu alınabilir
   maxConcurrent: 1, // personel başına eş zamanlı randevu

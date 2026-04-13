@@ -239,6 +239,22 @@
   cursor: not-allowed;
 }
 
+.appointment__time-card--blocked {
+  background-color: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #f59e0b;
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.appointment__time-card--unavailable {
+  background-color: rgba(107, 114, 128, 0.08);
+  border-color: rgba(107, 114, 128, 0.3);
+  color: #6b7280;
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Legend */
 .appointment__legend {
   display: flex;
@@ -269,6 +285,18 @@
 .appointment__legend-dot--booked {
   background-color: rgba(239, 68, 68, 0.15);
   border-color: var(--color-error);
+}
+
+.appointment__legend-dot--blocked {
+  background-color: rgba(245, 158, 11, 0.15);
+  border-color: #f59e0b;
+}
+
+/* Duration info */
+.appointment__duration-info {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 1rem;
 }
 
 /* Staff inline — seçilen hizmetin altında, grid full-width */

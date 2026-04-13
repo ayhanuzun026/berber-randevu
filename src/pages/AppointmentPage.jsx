@@ -21,6 +21,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { SERVICES_LIST, BUSINESS, APPOINTMENT } from '../config/constants';
 import { createAppointment, getAppointmentsByDateAndStaff } from '../services/appointmentService';
+import { getBlockedSlots } from '../services/blockedSlotService';
 import { getActiveStaff } from '../services/staffService';
 import './AppointmentPage.css';
 
@@ -54,6 +55,46 @@ function generateTimeSlots(date) {
   return slots;
 }
 
+function timeToMinutes(timeStr) {
+  const [h, m] = timeStr.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function isSlotOccupiedByAppt(slotTime, apptTime, apptDuration) {
+  const slotMin = timeToMinutes(slotTime);
+  const apptStart = timeToMinutes(apptTime);
+  const apptEnd = apptStart + apptDuration;
+  // 45dk islem 10:00 -> 10:45'te biter, 10:45 serbest. Dolu: 10:00,10:15,10:30
+  return slotMin >= apptStart && slotMin < apptEnd;
+}
+
+function isSlotAvailable(slot, serviceDuration, bookedAppointments, blockedSlotTimes, allSlots) {
+  // 45dk -> 3 slot (10:00,10:15,10:30). 10:45 serbest.
+  const slotsNeeded = Math.ceil(serviceDuration / APPOINTMENT.slotDuration);
+  const slotIndex = allSlots.indexOf(slot);
+
+  if (slotIndex + slotsNeeded > allSlots.length) return false;
+
+  const requiredSlots = allSlots.slice(slotIndex, slotIndex + slotsNeeded);
+
+  const startMin = timeToMinutes(slot);
+  const expectedEndMin = startMin + (slotsNeeded - 1) * APPOINTMENT.slotDuration;
+  const actualEndMin = timeToMinutes(requiredSlots[requiredSlots.length - 1]);
+  if (actualEndMin !== expectedEndMin) return false;
+
+  for (const reqSlot of requiredSlots) {
+    if (blockedSlotTimes.includes(reqSlot)) return false;
+
+    for (const appt of bookedAppointments) {
+      if (isSlotOccupiedByAppt(reqSlot, appt.time, appt.serviceDuration || APPOINTMENT.slotDuration)) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
 function generateAvailableDates() {
   const dates = [];
   const today = startOfDay(new Date());
@@ -77,7 +118,8 @@ export default function AppointmentPage() {
   const [selectedTime, setSelectedTime] = useState(null);
   const [staffList, setStaffList] = useState([]);
   const [staffLoading, setStaffLoading] = useState(true);
-  const [bookedSlots, setBookedSlots] = useState([]);
+  const [bookedAppointments, setBookedAppointments] = useState([]);
+  const [blockedSlotTimes, setBlockedSlotTimes] = useState([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -85,7 +127,6 @@ export default function AppointmentPage() {
 
   const availableDates = generateAvailableDates();
 
-  // Personel listesini yükle
   useEffect(() => {
     getActiveStaff()
       .then(setStaffList)
@@ -93,18 +134,23 @@ export default function AppointmentPage() {
       .finally(() => setStaffLoading(false));
   }, []);
 
-  // Tarih + personel seçildiğinde dolu slotları getir
   useEffect(() => {
     if (!selectedDate || !selectedStaff) return;
 
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
     setSlotsLoading(true);
-    getAppointmentsByDateAndStaff(dateStr, selectedStaff.id)
-      .then((appointments) => {
-        setBookedSlots(appointments.map((a) => a.time));
+
+    Promise.all([
+      getAppointmentsByDateAndStaff(dateStr, selectedStaff.id),
+      getBlockedSlots(dateStr, selectedStaff.id),
+    ])
+      .then(([appointments, blocked]) => {
+        setBookedAppointments(appointments);
+        setBlockedSlotTimes(blocked.map((b) => b.time));
       })
       .catch(() => {
-        setBookedSlots([]);
+        setBookedAppointments([]);
+        setBlockedSlotTimes([]);
       })
       .finally(() => {
         setSlotsLoading(false);
@@ -122,6 +168,29 @@ export default function AppointmentPage() {
     slotDate.setHours(h, m, 0, 0);
     return !isBefore(slotDate, minBookingTime);
   });
+
+  const getSlotStatus = (slot) => {
+    if (blockedSlotTimes.includes(slot)) return 'blocked';
+
+    for (const appt of bookedAppointments) {
+      if (isSlotOccupiedByAppt(slot, appt.time, appt.serviceDuration || APPOINTMENT.slotDuration)) {
+        return 'booked';
+      }
+    }
+
+    if (selectedService) {
+      const available = isSlotAvailable(
+        slot,
+        selectedService.duration,
+        bookedAppointments,
+        blockedSlotTimes,
+        filteredSlots
+      );
+      if (!available) return 'unavailable';
+    }
+
+    return 'available';
+  };
 
   const canGoNext = () => {
     switch (step) {
@@ -360,6 +429,9 @@ export default function AppointmentPage() {
             <h3 className="appointment__panel-title">
               <FiClock /> Saat Seçin
             </h3>
+            <p className="appointment__duration-info">
+              Seçilen hizmet süresi: <strong>{selectedService.duration} dakika</strong>
+            </p>
 
             {/* Renk açıklaması */}
             <div className="appointment__legend">
@@ -370,6 +442,10 @@ export default function AppointmentPage() {
               <div className="appointment__legend-item">
                 <span className="appointment__legend-dot appointment__legend-dot--booked" />
                 Dolu
+              </div>
+              <div className="appointment__legend-item">
+                <span className="appointment__legend-dot appointment__legend-dot--blocked" />
+                Kapalı
               </div>
             </div>
 
@@ -382,20 +458,17 @@ export default function AppointmentPage() {
             ) : (
               <div className="appointment__times">
                 {filteredSlots.map((slot) => {
-                  const isBooked = bookedSlots.includes(slot);
+                  const status = getSlotStatus(slot);
+                  const isDisabled = status !== 'available';
                   const isSelected = selectedTime === slot;
                   return (
                     <button
                       key={slot}
                       className={`appointment__time-card ${
                         isSelected ? 'appointment__time-card--selected' : ''
-                      } ${
-                        isBooked
-                          ? 'appointment__time-card--booked'
-                          : 'appointment__time-card--available'
-                      }`}
-                      onClick={() => !isBooked && setSelectedTime(slot)}
-                      disabled={isBooked}
+                      } appointment__time-card--${status}`}
+                      onClick={() => !isDisabled && setSelectedTime(slot)}
+                      disabled={isDisabled}
                     >
                       {slot}
                     </button>
