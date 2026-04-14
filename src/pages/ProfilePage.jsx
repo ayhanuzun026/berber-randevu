@@ -191,7 +191,7 @@ export default function ProfilePage() {
   );
 
   const cancelledAppointments = appointments.filter(
-    (a) => a.status === STATUS.CANCELLED
+    (a) => a.status === STATUS.CANCELLED && a.cancelledBy !== 'admin'
   );
 
   const noShowAppointments = appointments.filter(

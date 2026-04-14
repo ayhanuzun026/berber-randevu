@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   format,
@@ -125,6 +125,8 @@ export default function AppointmentPage() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
 
+  const navRef = useRef(null);
+
   const availableDates = generateAvailableDates();
 
   useEffect(() => {
@@ -170,7 +172,7 @@ export default function AppointmentPage() {
   });
 
   const getSlotStatus = (slot) => {
-    if (blockedSlotTimes.includes(slot)) return 'blocked';
+    if (blockedSlotTimes.includes(slot)) return 'booked';
 
     for (const appt of bookedAppointments) {
       if (isSlotOccupiedByAppt(slot, appt.time, appt.serviceDuration || APPOINTMENT.slotDuration)) {
@@ -354,7 +356,12 @@ export default function AppointmentPage() {
                                     ? 'appointment__staff-card--selected'
                                     : ''
                                 }`}
-                                onClick={() => setSelectedStaff(staff)}
+                                onClick={() => {
+                                  setSelectedStaff(staff);
+                                  setTimeout(() => {
+                                    navRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                  }, 100);
+                                }}
                               >
                                 <div className="appointment__staff-avatar">
                                   {staff.photoURL ? (
@@ -516,7 +523,7 @@ export default function AppointmentPage() {
         )}
 
         {/* Navigation */}
-        <div className="appointment__nav">
+        <div className="appointment__nav" ref={navRef}>
           {step > 0 && (
             <button
               className="btn btn-secondary"

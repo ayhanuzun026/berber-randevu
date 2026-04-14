@@ -237,10 +237,13 @@ export default function AdminPage() {
   const handleStatusChange = async (appointmentId, newStatus) => {
     setUpdatingId(appointmentId);
     try {
-      await updateAppointmentStatus(appointmentId, newStatus);
+      const opts = newStatus === STATUS.CANCELLED ? { cancelledBy: 'admin' } : {};
+      await updateAppointmentStatus(appointmentId, newStatus, opts);
       setAppointments((prev) =>
         prev.map((a) =>
-          a.id === appointmentId ? { ...a, status: newStatus } : a
+          a.id === appointmentId
+            ? { ...a, status: newStatus, ...(newStatus === STATUS.CANCELLED ? { cancelledBy: 'admin' } : {}) }
+            : a
         )
       );
     } catch {

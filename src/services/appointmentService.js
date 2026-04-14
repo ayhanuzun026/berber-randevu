@@ -75,8 +75,10 @@ export async function getAllAppointments() {
   return sortAppointmentsDesc(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
 }
 
-export async function updateAppointmentStatus(appointmentId, status) {
-  return updateDoc(doc(db, COLLECTION, appointmentId), { status });
+export async function updateAppointmentStatus(appointmentId, status, { cancelledBy } = {}) {
+  const data = { status };
+  if (cancelledBy) data.cancelledBy = cancelledBy;
+  return updateDoc(doc(db, COLLECTION, appointmentId), data);
 }
 
 export async function getAppointmentsByDate(dateStr) {

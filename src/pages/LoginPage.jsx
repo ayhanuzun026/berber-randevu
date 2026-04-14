@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
+import { RecaptchaVerifier, signInWithPhoneNumber, updateProfile } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
-import { FiPhone, FiShield, FiCheck, FiArrowRight } from 'react-icons/fi';
+import { FiPhone, FiShield, FiCheck, FiArrowRight, FiUser } from 'react-icons/fi';
 import './LoginPage.css';
 
 const PHONE_REGEX = /^(\+90|0)?[5][0-9]{9}$/;
@@ -16,9 +16,10 @@ function formatPhoneForFirebase(phone) {
 }
 
 export default function LoginPage() {
-  const [step, setStep] = useState(0); // 0: telefon, 1: recaptcha, 2: kod
+  const [step, setStep] = useState(0); // 0: telefon, 1: recaptcha, 2: kod, 3: isim
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
+  const [fullName, setFullName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [confirmResult, setConfirmResult] = useState(null);
@@ -30,12 +31,12 @@ export default function LoginPage() {
   const location = useLocation();
   const from = location.state?.from || '/';
 
-  // Zaten giriş yapılmışsa yönlendir
+  // Zaten giriş yapılmışsa yönlendir (isim adımı hariç)
   useEffect(() => {
-    if (user) {
+    if (user && step !== 3) {
       navigate(from, { replace: true });
     }
-  }, [user, from, navigate]);
+  }, [user, from, navigate, step]);
 
   // reCAPTCHA başlat
   useEffect(() => {
@@ -118,8 +119,11 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      await confirmResult.confirm(code);
-      // Auth state listener yönlendirecek
+      const result = await confirmResult.confirm(code);
+      if (!result.user.displayName) {
+        setStep(3);
+      }
+      // displayName varsa Auth state listener yönlendirecek
     } catch (err) {
       if (err.code === 'auth/invalid-verification-code') {
         setError('Geçersiz doğrulama kodu. Lütfen tekrar deneyin.');
@@ -131,7 +135,27 @@ export default function LoginPage() {
     }
   };
 
-  if (user) return null;
+  const handleSaveName = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (!fullName.trim() || fullName.trim().split(/\s+/).length < 2) {
+      setError('Lütfen ad ve soyadınızı girin.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await updateProfile(auth.currentUser, { displayName: fullName.trim() });
+      navigate(from, { replace: true });
+    } catch {
+      setError('İsim kaydedilirken bir hata oluştu. Lütfen tekrar deneyin.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (user && step !== 3) return null;
 
   return (
     <section className="login section">
@@ -278,6 +302,46 @@ export default function LoginPage() {
               >
                 Baştan Başla
               </button>
+            </>
+          )}
+
+          {/* Step 3: İsim Soyisim */}
+          {step === 3 && (
+            <>
+              <div className="login__header">
+                <div className="login__icon-wrapper login__icon-wrapper--success">
+                  <FiUser size={28} />
+                </div>
+                <h1 className="login__title">Hoş Geldiniz!</h1>
+                <p className="login__subtitle">
+                  Randevularınızda sizi tanıyabilmemiz için adınızı ve soyadınızı girin
+                </p>
+              </div>
+
+              {error && <div className="login__error">{error}</div>}
+
+              <form onSubmit={handleSaveName} className="login__form">
+                <div className="form-group">
+                  <label className="form-label" htmlFor="login-name">Ad Soyad</label>
+                  <input
+                    id="login-name"
+                    className="form-input"
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Örn: Ahmet Yılmaz"
+                    autoFocus
+                  />
+                </div>
+                <button
+                  className="btn btn-primary login__submit"
+                  type="submit"
+                  disabled={loading || !fullName.trim()}
+                >
+                  {loading ? 'Kaydediliyor...' : 'Kaydet ve Devam Et'}
+                  {!loading && <FiArrowRight />}
+                </button>
+              </form>
             </>
           )}
 
