@@ -441,18 +441,21 @@ export default function AppointmentPage() {
             {/* Saat seçildiyse özet göster */}
             {selectedTime && (
               <div className="appointment__summary">
-                <div className="appointment__summary-name">
-                  <label htmlFor="appt-name">Ad Soyad</label>
-                  <input
-                    id="appt-name"
-                    className="form-input"
-                    type="text"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    placeholder="Adınız Soyadınız"
-                    autoComplete="name"
-                  />
-                </div>
+                {/* İsim girişte alınıyor; sadece eksikse burada sor */}
+                {!user?.displayName && (
+                  <div className="appointment__summary-name">
+                    <label htmlFor="appt-name">Ad Soyad</label>
+                    <input
+                      id="appt-name"
+                      className="form-input"
+                      type="text"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      placeholder="Adınız Soyadınız"
+                      autoComplete="name"
+                    />
+                  </div>
+                )}
                 <div className="appointment__summary-item">
                   <span>Hizmet</span>
                   <strong>{selectedService.name}</strong>
