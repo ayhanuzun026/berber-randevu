@@ -4,8 +4,6 @@ import {
   getDocs,
   doc,
   deleteDoc,
-  orderBy,
-  query,
   Timestamp,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';

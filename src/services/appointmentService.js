@@ -1,16 +1,21 @@
 import {
   collection,
-  addDoc,
   query,
   where,
   getDocs,
   doc,
   updateDoc,
+  deleteDoc,
+  runTransaction,
+  onSnapshot,
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { getServicePrice, getServiceDuration, STATUS } from '../config/constants';
+import { coveredSlotTimes, reservationId } from '../utils/slots';
 
 const COLLECTION = 'appointments';
+const RESERVATIONS = 'slotReservations';
 
 function toComparableTime(value) {
   if (!value) return 0;
@@ -52,13 +57,54 @@ function sortAppointmentsDesc(appointments) {
   return appointments.sort((a, b) => toAppointmentSortTime(b) - toAppointmentSortTime(a));
 }
 
+/**
+ * Randevu oluşturur. Çift rezervasyonu önlemek için transaction içinde
+ * ilgili 15dk slotlarını rezerve eder — herhangi biri doluysa işlem iptal olur.
+ * Fiyat ve süre güvenilir kaynaktan (constants) alınır; istemci değerine güvenilmez.
+ */
 export async function createAppointment(data) {
-  const docRef = await addDoc(collection(db, COLLECTION), {
-    ...data,
-    status: 'confirmed',
-    createdAt: Timestamp.now(),
+  const { userId, serviceId, staffId, date, time } = data;
+
+  const trustedPrice = getServicePrice(serviceId);
+  const trustedDuration = getServiceDuration(serviceId);
+  if (trustedDuration === undefined) {
+    throw new Error('INVALID_SERVICE');
+  }
+
+  const slotTimes = coveredSlotTimes(time, trustedDuration);
+  const slotRefs = slotTimes.map((t) => doc(db, RESERVATIONS, reservationId(date, staffId, t)));
+
+  const appointmentId = await runTransaction(db, async (tx) => {
+    // Tüm okumalar önce yapılmalı (Firestore transaction kuralı)
+    const snaps = await Promise.all(slotRefs.map((ref) => tx.get(ref)));
+    if (snaps.some((snap) => snap.exists())) {
+      throw new Error('SLOT_TAKEN');
+    }
+
+    const apptRef = doc(collection(db, COLLECTION));
+    tx.set(apptRef, {
+      ...data,
+      servicePrice: trustedPrice ?? null,
+      serviceDuration: trustedDuration,
+      status: STATUS.CONFIRMED,
+      createdAt: Timestamp.now(),
+    });
+
+    slotRefs.forEach((ref, i) => {
+      tx.set(ref, {
+        date,
+        staffId,
+        time: slotTimes[i],
+        userId,
+        appointmentId: apptRef.id,
+        createdAt: Timestamp.now(),
+      });
+    });
+
+    return apptRef.id;
   });
-  return docRef.id;
+
+  return appointmentId;
 }
 
 export async function getAppointmentsByUser(userId) {
@@ -75,17 +121,61 @@ export async function getAllAppointments() {
   return sortAppointmentsDesc(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
 }
 
-export async function updateAppointmentStatus(appointmentId, status, { cancelledBy } = {}) {
-  const data = { status };
-  if (cancelledBy) data.cancelledBy = cancelledBy;
-  return updateDoc(doc(db, COLLECTION, appointmentId), data);
+/**
+ * Randevuları gerçek-zamanlı dinler (30sn polling yerine).
+ * onChange(sortedList) her değişiklikte çağrılır. Aboneliği iptal eden fonksiyon döner.
+ */
+export function subscribeToAppointments(onChange, onError) {
+  return onSnapshot(
+    collection(db, COLLECTION),
+    (snapshot) => {
+      const list = sortAppointmentsDesc(
+        snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+      );
+      onChange(list);
+    },
+    (err) => {
+      if (onError) onError(err);
+    }
+  );
+}
+
+/**
+ * Randevu durumunu günceller. İptal edilirse kim iptal etti bilgisini yazar
+ * ve rezerve edilmiş slotları serbest bırakır.
+ */
+export async function updateAppointmentStatus(appointmentId, status, opts = {}) {
+  const patch = { status };
+  if (status === STATUS.CANCELLED && opts.cancelledBy) {
+    patch.cancelledBy = opts.cancelledBy;
+  }
+
+  await updateDoc(doc(db, COLLECTION, appointmentId), patch);
+
+  if (status === STATUS.CANCELLED) {
+    await releaseSlotsForAppointment(appointmentId);
+  }
+}
+
+/** Bir randevuya ait tüm slot rezervasyonlarını siler (slotları serbest bırakır). */
+async function releaseSlotsForAppointment(appointmentId) {
+  try {
+    const q = query(
+      collection(db, RESERVATIONS),
+      where('appointmentId', '==', appointmentId)
+    );
+    const snapshot = await getDocs(q);
+    await Promise.all(snapshot.docs.map((d) => deleteDoc(doc(db, RESERVATIONS, d.id))));
+  } catch {
+    // Slotlar silinemezse randevu yine de iptal edilmiş sayılır; sessizce devam et.
+  }
 }
 
 export async function getAppointmentsByDate(dateStr) {
   const q = query(
     collection(db, COLLECTION),
     where('date', '==', dateStr),
-    where('status', 'in', ['pending', 'confirmed'])
+    where('status', 'in', [STATUS.PENDING, STATUS.CONFIRMED])
   );
   const snapshot = await getDocs(q);
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -100,5 +190,19 @@ export async function getAppointmentsByDateAndStaff(dateStr, staffId) {
   const snapshot = await getDocs(q);
   return snapshot.docs
     .map((d) => ({ id: d.id, ...d.data() }))
-    .filter((a) => a.status === 'pending' || a.status === 'confirmed');
+    .filter((a) => a.status === STATUS.PENDING || a.status === STATUS.CONFIRMED);
+}
+
+/**
+ * Müşteri tarafının müsaitlik hesabı için — PII içermeyen rezerve slot saatleri.
+ * ["10:00", "10:15", ...]
+ */
+export async function getReservedSlots(dateStr, staffId) {
+  const q = query(
+    collection(db, RESERVATIONS),
+    where('date', '==', dateStr),
+    where('staffId', '==', staffId)
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((d) => d.data().time);
 }

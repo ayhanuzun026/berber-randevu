@@ -18,11 +18,14 @@ import {
   FiScissors,
   FiUser,
 } from 'react-icons/fi';
+import { updateProfile } from 'firebase/auth';
 import { useAuth } from '../context/AuthContext';
 import { SERVICES_LIST, BUSINESS, APPOINTMENT } from '../config/constants';
-import { createAppointment, getAppointmentsByDateAndStaff } from '../services/appointmentService';
+import { createAppointment, getReservedSlots } from '../services/appointmentService';
 import { getBlockedSlots } from '../services/blockedSlotService';
 import { getActiveStaff } from '../services/staffService';
+import { isSlotAvailable } from '../utils/slots';
+import { auth } from '../config/firebase';
 import './AppointmentPage.css';
 
 const STEPS = ['Hizmet', 'Tarih', 'Saat'];
@@ -55,46 +58,6 @@ function generateTimeSlots(date) {
   return slots;
 }
 
-function timeToMinutes(timeStr) {
-  const [h, m] = timeStr.split(':').map(Number);
-  return h * 60 + m;
-}
-
-function isSlotOccupiedByAppt(slotTime, apptTime, apptDuration) {
-  const slotMin = timeToMinutes(slotTime);
-  const apptStart = timeToMinutes(apptTime);
-  const apptEnd = apptStart + apptDuration;
-  // 45dk islem 10:00 -> 10:45'te biter, 10:45 serbest. Dolu: 10:00,10:15,10:30
-  return slotMin >= apptStart && slotMin < apptEnd;
-}
-
-function isSlotAvailable(slot, serviceDuration, bookedAppointments, blockedSlotTimes, allSlots) {
-  // 45dk -> 3 slot (10:00,10:15,10:30). 10:45 serbest.
-  const slotsNeeded = Math.ceil(serviceDuration / APPOINTMENT.slotDuration);
-  const slotIndex = allSlots.indexOf(slot);
-
-  if (slotIndex + slotsNeeded > allSlots.length) return false;
-
-  const requiredSlots = allSlots.slice(slotIndex, slotIndex + slotsNeeded);
-
-  const startMin = timeToMinutes(slot);
-  const expectedEndMin = startMin + (slotsNeeded - 1) * APPOINTMENT.slotDuration;
-  const actualEndMin = timeToMinutes(requiredSlots[requiredSlots.length - 1]);
-  if (actualEndMin !== expectedEndMin) return false;
-
-  for (const reqSlot of requiredSlots) {
-    if (blockedSlotTimes.includes(reqSlot)) return false;
-
-    for (const appt of bookedAppointments) {
-      if (isSlotOccupiedByAppt(reqSlot, appt.time, appt.serviceDuration || APPOINTMENT.slotDuration)) {
-        return false;
-      }
-    }
-  }
-
-  return true;
-}
-
 function generateAvailableDates() {
   const dates = [];
   const today = startOfDay(new Date());
@@ -118,12 +81,13 @@ export default function AppointmentPage() {
   const [selectedTime, setSelectedTime] = useState(null);
   const [staffList, setStaffList] = useState([]);
   const [staffLoading, setStaffLoading] = useState(true);
-  const [bookedAppointments, setBookedAppointments] = useState([]);
+  const [reservedTimes, setReservedTimes] = useState([]);
   const [blockedSlotTimes, setBlockedSlotTimes] = useState([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [customerName, setCustomerName] = useState(user?.displayName || '');
 
   const navRef = useRef(null);
 
@@ -143,15 +107,15 @@ export default function AppointmentPage() {
     setSlotsLoading(true);
 
     Promise.all([
-      getAppointmentsByDateAndStaff(dateStr, selectedStaff.id),
+      getReservedSlots(dateStr, selectedStaff.id),
       getBlockedSlots(dateStr, selectedStaff.id),
     ])
-      .then(([appointments, blocked]) => {
-        setBookedAppointments(appointments);
+      .then(([reserved, blocked]) => {
+        setReservedTimes(reserved);
         setBlockedSlotTimes(blocked.map((b) => b.time));
       })
       .catch(() => {
-        setBookedAppointments([]);
+        setReservedTimes([]);
         setBlockedSlotTimes([]);
       })
       .finally(() => {
@@ -173,20 +137,15 @@ export default function AppointmentPage() {
 
   const getSlotStatus = (slot) => {
     if (blockedSlotTimes.includes(slot)) return 'booked';
-
-    for (const appt of bookedAppointments) {
-      if (isSlotOccupiedByAppt(slot, appt.time, appt.serviceDuration || APPOINTMENT.slotDuration)) {
-        return 'booked';
-      }
-    }
+    if (reservedTimes.includes(slot)) return 'booked';
 
     if (selectedService) {
       const available = isSlotAvailable(
         slot,
         selectedService.duration,
-        bookedAppointments,
+        reservedTimes,
         blockedSlotTimes,
-        filteredSlots
+        timeSlots
       );
       if (!available) return 'unavailable';
     }
@@ -208,14 +167,29 @@ export default function AppointmentPage() {
   };
 
   const handleSubmit = async () => {
+    const name = customerName.trim();
+    if (!name) {
+      setError('Lütfen adınızı ve soyadınızı girin.');
+      return;
+    }
+
     setSubmitting(true);
     setError('');
 
     try {
+      // İsmi profile de kaydet ki sonraki randevularda hazır gelsin
+      if (auth?.currentUser && auth.currentUser.displayName !== name) {
+        try {
+          await updateProfile(auth.currentUser, { displayName: name });
+        } catch {
+          // Profil güncellenemezse randevuya devam et
+        }
+      }
+
       await createAppointment({
         userId: user.uid,
         userEmail: user.email || '',
-        customerName: user.displayName || '',
+        customerName: name,
         customerPhone: user.phoneNumber || '',
         serviceId: selectedService.id,
         serviceName: selectedService.name,
@@ -228,8 +202,18 @@ export default function AppointmentPage() {
         note: '',
       });
       setSuccess(true);
-    } catch {
-      setError('Randevu oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.');
+    } catch (err) {
+      if (err?.message === 'SLOT_TAKEN') {
+        setError('Bu saat az önce başkası tarafından alındı. Lütfen başka bir saat seçin.');
+        // Slotları tazele
+        setSelectedTime(null);
+        if (selectedDate && selectedStaff) {
+          const dateStr = format(selectedDate, 'yyyy-MM-dd');
+          getReservedSlots(dateStr, selectedStaff.id).then(setReservedTimes).catch(() => {});
+        }
+      } else {
+        setError('Randevu oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -487,6 +471,18 @@ export default function AppointmentPage() {
             {/* Saat seçildiyse özet göster */}
             {selectedTime && (
               <div className="appointment__summary">
+                <div className="appointment__summary-name">
+                  <label htmlFor="appt-name">Ad Soyad</label>
+                  <input
+                    id="appt-name"
+                    className="form-input"
+                    type="text"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    placeholder="Adınız Soyadınız"
+                    autoComplete="name"
+                  />
+                </div>
                 <div className="appointment__summary-item">
                   <span>Hizmet</span>
                   <strong>{selectedService.name}</strong>
@@ -544,7 +540,7 @@ export default function AppointmentPage() {
           ) : (
             <button
               className="btn btn-primary"
-              disabled={!selectedTime || submitting}
+              disabled={!selectedTime || !customerName.trim() || submitting}
               onClick={handleSubmit}
             >
               {submitting ? 'Gönderiliyor...' : 'Randevuyu Onayla'}

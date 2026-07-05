@@ -14,6 +14,7 @@ import {
   FiPlus,
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import {
   getAppointmentsByUser,
   updateAppointmentStatus,
@@ -136,6 +137,7 @@ function AppointmentSection({
 
 export default function ProfilePage() {
   const { user, logout } = useAuth();
+  const { toast, confirm } = useToast();
   const navigate = useNavigate();
 
   const [appointments, setAppointments] = useState([]);
@@ -152,18 +154,25 @@ export default function ProfilePage() {
   }, [user]);
 
   const handleCancel = async (appointmentId) => {
-    if (!confirm('Bu randevuyu iptal etmek istediğinize emin misiniz?')) return;
+    const ok = await confirm('Bu randevuyu iptal etmek istediğinize emin misiniz?', {
+      confirmText: 'Randevuyu İptal Et',
+      danger: true,
+    });
+    if (!ok) return;
 
     setCancellingId(appointmentId);
     try {
-      await updateAppointmentStatus(appointmentId, STATUS.CANCELLED);
+      await updateAppointmentStatus(appointmentId, STATUS.CANCELLED, { cancelledBy: 'user' });
       setAppointments((prev) =>
         prev.map((a) =>
-          a.id === appointmentId ? { ...a, status: STATUS.CANCELLED } : a
+          a.id === appointmentId
+            ? { ...a, status: STATUS.CANCELLED, cancelledBy: 'user' }
+            : a
         )
       );
+      toast('Randevunuz iptal edildi.', 'success');
     } catch {
-      alert('İptal işlemi sırasında bir hata oluştu.');
+      toast('İptal işlemi sırasında bir hata oluştu.', 'error');
     } finally {
       setCancellingId(null);
     }

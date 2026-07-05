@@ -519,3 +519,19 @@
     flex-direction: column;
   }
 }
+
+/* Randevu özetinde ad soyad alanı */
+.appointment__summary-name {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+
+.appointment__summary-name label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary, #6b7280);
+}

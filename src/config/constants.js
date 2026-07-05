@@ -48,6 +48,24 @@ export const SERVICES_LIST = [
   { id: 'sac-kesimi-ustura', name: 'Saç Kesimi - Ustura', desc: 'Ustura ile detaylı saç kesimi', price: 600, duration: 30 },
 ];
 
+// Hizmet id -> hizmet objesi (hızlı erişim, tek kaynak)
+export const SERVICES_MAP = SERVICES_LIST.reduce((acc, svc) => {
+  acc[svc.id] = svc;
+  return acc;
+}, {});
+
+// Güvenilir fiyat/süre kaynağı — istemciden gelen değere güvenme.
+// NOT: Bu fiyatlar firestore.rules içindeki priceOf() haritasıyla senkron olmalı.
+export function getServicePrice(serviceId) {
+  const svc = SERVICES_MAP[serviceId];
+  return svc ? svc.price : undefined;
+}
+
+export function getServiceDuration(serviceId) {
+  const svc = SERVICES_MAP[serviceId];
+  return svc ? svc.duration : undefined;
+}
+
 // Randevu durumları
 export const STATUS = {
   PENDING: 'pending',

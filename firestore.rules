@@ -8,30 +8,78 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // admins koleksiyonunda kullanıcının UID'i ile bir doküman varsa admin'dir.
-    // exists() güvenlik kurallarını bypass eder, bu yüzden admin dokümanını
-    // okuma izni olmasa bile bu kontrol çalışır.
     function isAdmin() {
       return isSignedIn() &&
         exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
+    // Güvenilir fiyat kaynağı — istemcinin gönderdiği fiyatı burada doğrularız.
+    // NOT: constants.js içindeki SERVICES_LIST ile senkron tutulmalı.
+    function priceOf(serviceId) {
+      return {
+        'sac-kesimi': 450,
+        'sac-kesimi-yikama': 550,
+        'sac-kesimi-agda': 600,
+        'sac-sakal': 700,
+        'sac-sakal-yikama': 800,
+        'cocuk-tirasi': 450,
+        'sakal-tirasi': 250,
+        'sakal-tirasi-agda': 400,
+        'fon': 200,
+        'kas-tasarimi': 150,
+        'sac-yikama': 100,
+        'ense-tirasi': 100,
+        'agda': 150,
+        'vip-paket': 2500,
+        'cilt-bakimi-buharli': 1250,
+        'cilt-bakimi': 1000,
+        'sac-kesimi-ustura': 600
+      }.get(serviceId, -1);
+    }
+
+    function validNewAppointment() {
+      return request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'confirmed'
+        && request.resource.data.serviceId is string
+        && request.resource.data.staffId is string
+        && request.resource.data.date is string
+        && request.resource.data.time is string
+        && (
+          request.resource.data.servicePrice == priceOf(request.resource.data.serviceId)
+          || (request.resource.data.serviceId == 'damat-tirasi' && request.resource.data.servicePrice == null)
+        );
+    }
+
     // --- admins: kullanıcı yalnızca KENDİ admin dokümanını okuyabilir ---
-    // (AuthContext'teki isAdmin kontrolü için). Yazma sadece Console'dan yapılır.
     match /admins/{uid} {
       allow read: if isSignedIn() && request.auth.uid == uid;
       allow write: if false;
     }
 
     // --- appointments ---
-    // Giriş yapan herkes okuyabilir (müsaitlik/slot hesabı için gerekli).
-    // Kullanıcı yalnızca kendi adına randevu oluşturabilir.
-    // Durum güncelleme / silme sadece admin.
+    // Okuma: sadece sahibi veya admin (müşteri PII'si herkese açık DEĞİL).
+    // Oluşturma: giriş yapan, kendi adına, fiyatı doğrulanmış randevu.
+    // Güncelleme: admin her şeyi; kullanıcı yalnızca kendi randevusunu iptal edebilir.
     match /appointments/{id} {
+      allow read: if isAdmin() ||
+        (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && validNewAppointment();
+      allow update: if isAdmin() ||
+        (isSignedIn()
+          && resource.data.userId == request.auth.uid
+          && request.resource.data.status == 'cancelled'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledBy']));
+      allow delete: if isAdmin();
+    }
+
+    // --- slotReservations: PII içermez; müsaitlik hesabı için okunur ---
+    // Deterministik doküman kimliği (date_staff_time) çift rezervasyonu engeller.
+    match /slotReservations/{id} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() &&
-        request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isAdmin();
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if false;
+      allow delete: if isAdmin() ||
+        (isSignedIn() && resource.data.userId == request.auth.uid);
     }
 
     // --- staff: herkes okuyabilir (ana sayfa + randevu), yazma sadece admin ---
