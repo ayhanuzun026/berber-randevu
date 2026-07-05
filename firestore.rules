@@ -67,8 +67,12 @@ service cloud.firestore {
       allow update: if isAdmin() ||
         (isSignedIn()
           && resource.data.userId == request.auth.uid
-          && request.resource.data.status == 'cancelled'
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledBy']));
+          && (
+            // Kendi randevusunu iptal
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledBy'])
+            // Kendi randevusunu erteleme (sadece tarih/saat)
+            || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['date', 'time'])
+          ));
       allow delete: if isAdmin();
     }
 
@@ -76,7 +80,8 @@ service cloud.firestore {
     // Deterministik doküman kimliği (date_staff_time) çift rezervasyonu engeller.
     match /slotReservations/{id} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow create: if isAdmin() ||
+        (isSignedIn() && request.resource.data.userId == request.auth.uid);
       allow update: if false;
       allow delete: if isAdmin() ||
         (isSignedIn() && resource.data.userId == request.auth.uid);
@@ -97,6 +102,12 @@ service cloud.firestore {
     // --- blockedSlots: giriş yapan okuyabilir (müsaitlik), yazma sadece admin ---
     match /blockedSlots/{id} {
       allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // --- settings: çalışma saati/tatil — herkes okur (randevu için), yazma admin ---
+    match /settings/{id} {
+      allow read: if true;
       allow write: if isAdmin();
     }
   }

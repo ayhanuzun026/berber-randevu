@@ -1,0 +1,120 @@
+.reschedule-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.reschedule-box {
+  background: #fff;
+  border-radius: 16px;
+  padding: 22px;
+  width: 100%;
+  max-width: 460px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+}
+
+.reschedule-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+.reschedule-head h3 { margin: 0; font-size: 1.15rem; }
+.reschedule-head p { margin: 4px 0 0; color: #6b7280; font-size: 0.85rem; }
+
+.reschedule-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 4px;
+}
+
+.reschedule-current {
+  background: #f3f4f6;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  color: #4b5563;
+  margin-bottom: 16px;
+}
+
+.reschedule-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #6b7280;
+  margin: 12px 0 8px;
+}
+
+.reschedule-dates {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.reschedule-date {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 56px;
+  padding: 8px 6px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: #6b7280;
+  transition: all 0.15s;
+}
+.reschedule-date strong { font-size: 1.1rem; color: #1f2937; }
+.reschedule-date--active {
+  border-color: var(--primary, #b8860b);
+  background: var(--primary, #b8860b);
+  color: #fff;
+}
+.reschedule-date--active strong { color: #fff; }
+
+.reschedule-times {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 8px;
+}
+
+.reschedule-time {
+  padding: 10px 4px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.15s;
+}
+.reschedule-time--active {
+  border-color: var(--primary, #b8860b);
+  background: var(--primary, #b8860b);
+  color: #fff;
+}
+
+.reschedule-empty {
+  color: #9ca3af;
+  font-size: 0.9rem;
+  padding: 8px 0;
+}
+
+.reschedule-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}

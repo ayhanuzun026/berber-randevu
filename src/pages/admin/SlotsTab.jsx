@@ -6,10 +6,11 @@ import { getAppointmentsByDateAndStaff } from '../../services/appointmentService
 import { getBlockedSlots, toggleBlockedSlot } from '../../services/blockedSlotService';
 import { APPOINTMENT } from '../../config/constants';
 import { timeToMinutes } from '../../utils/slots';
+import { getWorkingSlots, getAvailableDates } from '../../utils/businessHours';
+import { DEFAULT_SETTINGS } from '../../services/settingsService';
 import { useToast } from '../../context/ToastContext';
-import { generateAllTimeSlots, generateNextDays } from './adminHelpers';
 
-export default function SlotsTab({ staffList }) {
+export default function SlotsTab({ staffList, settings = DEFAULT_SETTINGS }) {
   const { toast } = useToast();
   const [slotDate, setSlotDate] = useState(null);
   const [slotStaff, setSlotStaff] = useState(null);
@@ -18,8 +19,8 @@ export default function SlotsTab({ staffList }) {
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [togglingSlot, setTogglingSlot] = useState(null);
 
-  const allTimeSlots = generateAllTimeSlots();
-  const slotDates = generateNextDays(30);
+  const allTimeSlots = slotDate ? getWorkingSlots(slotDate, settings) : [];
+  const slotDates = getAvailableDates(settings, 30);
 
   useEffect(() => {
     if (!slotDate || !slotStaff) return;

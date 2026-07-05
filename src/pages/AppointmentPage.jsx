@@ -1,13 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  format,
-  addDays,
-  startOfDay,
-  getDay,
-  addHours,
-  isBefore,
-} from 'date-fns';
+import { format, addHours, isBefore } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import {
   FiChevronRight,
@@ -20,55 +13,17 @@ import {
 } from 'react-icons/fi';
 import { updateProfile } from 'firebase/auth';
 import { useAuth } from '../context/AuthContext';
-import { SERVICES_LIST, BUSINESS, APPOINTMENT } from '../config/constants';
+import { SERVICES_LIST, APPOINTMENT } from '../config/constants';
 import { createAppointment, getReservedSlots } from '../services/appointmentService';
 import { getBlockedSlots } from '../services/blockedSlotService';
 import { getActiveStaff } from '../services/staffService';
+import { getBusinessSettings, DEFAULT_SETTINGS } from '../services/settingsService';
 import { isSlotAvailable } from '../utils/slots';
+import { getWorkingSlots, getAvailableDates } from '../utils/businessHours';
 import { auth } from '../config/firebase';
 import './AppointmentPage.css';
 
 const STEPS = ['Hizmet', 'Tarih', 'Saat'];
-
-function generateTimeSlots(date) {
-  const dayOfWeek = getDay(date);
-  if (dayOfWeek === 0) return [];
-
-  const hours =
-    dayOfWeek === 6
-      ? BUSINESS.workingHours.saturday
-      : BUSINESS.workingHours.weekdays;
-
-  if (!hours) return [];
-
-  const [startH, startM] = hours.open.split(':').map(Number);
-  const [endH, endM] = hours.close.split(':').map(Number);
-
-  const slots = [];
-  let current = startH * 60 + startM;
-  const end = endH * 60 + endM;
-
-  while (current + APPOINTMENT.slotDuration <= end) {
-    const h = Math.floor(current / 60);
-    const m = current % 60;
-    slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
-    current += APPOINTMENT.slotDuration;
-  }
-
-  return slots;
-}
-
-function generateAvailableDates() {
-  const dates = [];
-  const today = startOfDay(new Date());
-  for (let i = 0; i < APPOINTMENT.maxAdvanceDays; i++) {
-    const date = addDays(today, i);
-    if (getDay(date) !== 0) {
-      dates.push(date);
-    }
-  }
-  return dates;
-}
 
 export default function AppointmentPage() {
   const { user } = useAuth();
@@ -88,16 +43,21 @@ export default function AppointmentPage() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [customerName, setCustomerName] = useState(user?.displayName || '');
+  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
 
   const navRef = useRef(null);
 
-  const availableDates = generateAvailableDates();
+  const availableDates = getAvailableDates(settings);
 
   useEffect(() => {
     getActiveStaff()
       .then(setStaffList)
       .catch(() => setStaffList([]))
       .finally(() => setStaffLoading(false));
+
+    getBusinessSettings()
+      .then(setSettings)
+      .catch(() => setSettings(DEFAULT_SETTINGS));
   }, []);
 
   useEffect(() => {
@@ -123,7 +83,7 @@ export default function AppointmentPage() {
       });
   }, [selectedDate, selectedStaff]);
 
-  const timeSlots = selectedDate ? generateTimeSlots(selectedDate) : [];
+  const timeSlots = selectedDate ? getWorkingSlots(selectedDate, settings) : [];
 
   const now = new Date();
   const minBookingTime = addHours(now, APPOINTMENT.minAdvanceHours);

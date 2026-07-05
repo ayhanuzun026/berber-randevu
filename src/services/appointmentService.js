@@ -11,7 +11,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { getServicePrice, getServiceDuration, STATUS } from '../config/constants';
+import { getServicePrice, getServiceDuration, STATUS, APPOINTMENT } from '../config/constants';
 import { coveredSlotTimes, reservationId } from '../utils/slots';
 
 const COLLECTION = 'appointments';
@@ -155,6 +155,47 @@ export async function updateAppointmentStatus(appointmentId, status, opts = {}) 
   if (status === STATUS.CANCELLED) {
     await releaseSlotsForAppointment(appointmentId);
   }
+}
+
+/**
+ * Randevuyu yeni tarih/saate erteler. Transaction içinde yeni slotların boş
+ * olduğunu doğrular, eski slotları siler, yeni slotları rezerve eder.
+ * Personel ve hizmet aynı kalır.
+ */
+export async function rescheduleAppointment(appointmentId, appt, newDate, newTime) {
+  const { staffId, date: oldDate, time: oldTime, userId } = appt;
+  const duration = appt.serviceDuration || APPOINTMENT.slotDuration;
+
+  const oldTimes = coveredSlotTimes(oldTime, duration);
+  const newTimes = coveredSlotTimes(newTime, duration);
+
+  const oldRefs = oldTimes.map((t) => doc(db, RESERVATIONS, reservationId(oldDate, staffId, t)));
+  const newRefs = newTimes.map((t) => doc(db, RESERVATIONS, reservationId(newDate, staffId, t)));
+
+  await runTransaction(db, async (tx) => {
+    const snaps = await Promise.all(newRefs.map((ref) => tx.get(ref)));
+    snaps.forEach((snap) => {
+      // Başka bir randevuya ait dolu slot varsa ertelenemez
+      if (snap.exists() && snap.data().appointmentId !== appointmentId) {
+        throw new Error('SLOT_TAKEN');
+      }
+    });
+
+    oldRefs.forEach((ref) => tx.delete(ref));
+
+    newRefs.forEach((ref, i) => {
+      tx.set(ref, {
+        date: newDate,
+        staffId,
+        time: newTimes[i],
+        userId,
+        appointmentId,
+        createdAt: Timestamp.now(),
+      });
+    });
+
+    tx.update(doc(db, COLLECTION, appointmentId), { date: newDate, time: newTime });
+  });
 }
 
 /** Bir randevuya ait tüm slot rezervasyonlarını siler (slotları serbest bırakır). */

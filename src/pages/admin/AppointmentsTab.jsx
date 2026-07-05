@@ -1,15 +1,25 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
-import { FiCheck, FiX, FiClock, FiCalendar, FiFilter, FiUser, FiPhone, FiUsers } from 'react-icons/fi';
+import { FiCheck, FiX, FiClock, FiCalendar, FiFilter, FiUser, FiPhone, FiUsers, FiRefreshCw } from 'react-icons/fi';
 import { updateAppointmentStatus } from '../../services/appointmentService';
 import { STATUS, STATUS_LABELS, STATUS_COLORS } from '../../config/constants';
+import { DEFAULT_SETTINGS } from '../../services/settingsService';
 import { useToast } from '../../context/ToastContext';
+import RescheduleModal from '../../components/common/RescheduleModal';
 
-export default function AppointmentsTab({ appointments, setAppointments }) {
+export default function AppointmentsTab({ appointments, setAppointments, settings = DEFAULT_SETTINGS }) {
   const { toast } = useToast();
   const [filter, setFilter] = useState('all');
   const [updatingId, setUpdatingId] = useState(null);
+  const [reschedulingAppt, setReschedulingAppt] = useState(null);
+
+  const handleRescheduleDone = (newDate, newTime) => {
+    setAppointments((prev) =>
+      prev.map((a) => (a.id === reschedulingAppt.id ? { ...a, date: newDate, time: newTime } : a))
+    );
+    setReschedulingAppt(null);
+  };
 
   const handleStatusChange = async (appointmentId, newStatus) => {
     setUpdatingId(appointmentId);
@@ -181,10 +191,27 @@ export default function AppointmentsTab({ appointments, setAppointments }) {
                     </button>
                   </>
                 )}
+                {(appt.status === STATUS.PENDING || appt.status === STATUS.CONFIRMED) && (
+                  <button
+                    className="btn btn-sm btn-secondary"
+                    onClick={() => setReschedulingAppt(appt)}
+                  >
+                    <FiRefreshCw /> Ertele
+                  </button>
+                )}
               </div>
             </div>
           ))}
         </div>
+      )}
+
+      {reschedulingAppt && (
+        <RescheduleModal
+          appt={reschedulingAppt}
+          settings={settings}
+          onClose={() => setReschedulingAppt(null)}
+          onDone={handleRescheduleDone}
+        />
       )}
     </>
   );

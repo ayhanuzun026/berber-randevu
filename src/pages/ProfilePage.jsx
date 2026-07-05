@@ -12,6 +12,7 @@ import {
   FiChevronDown,
   FiChevronUp,
   FiPlus,
+  FiRefreshCw,
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -19,8 +20,10 @@ import {
   getAppointmentsByUser,
   updateAppointmentStatus,
 } from '../services/appointmentService';
+import { getBusinessSettings, DEFAULT_SETTINGS } from '../services/settingsService';
 import { STATUS, STATUS_LABELS, STATUS_COLORS } from '../config/constants';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import RescheduleModal from '../components/common/RescheduleModal';
 import './ProfilePage.css';
 
 function formatPhone(phone) {
@@ -32,7 +35,7 @@ function formatPhone(phone) {
   return digits;
 }
 
-function AppointmentCard({ appt, showCancel, onCancel, cancellingId }) {
+function AppointmentCard({ appt, showCancel, onCancel, onReschedule, cancellingId }) {
   const canCancel =
     showCancel &&
     (appt.status === STATUS.PENDING || appt.status === STATUS.CONFIRMED);
@@ -77,6 +80,12 @@ function AppointmentCard({ appt, showCancel, onCancel, cancellingId }) {
         <div className="profile__card-actions">
           <button
             className="btn btn-secondary btn-sm"
+            onClick={() => onReschedule(appt)}
+          >
+            <FiRefreshCw /> Ertele
+          </button>
+          <button
+            className="btn btn-secondary btn-sm"
             onClick={() => onCancel(appt.id)}
             disabled={cancellingId === appt.id}
           >
@@ -96,6 +105,7 @@ function AppointmentSection({
   defaultOpen = false,
   showCancel = false,
   onCancel,
+  onReschedule,
   cancellingId,
 }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -124,6 +134,7 @@ function AppointmentSection({
                   appt={appt}
                   showCancel={showCancel}
                   onCancel={onCancel}
+                  onReschedule={onReschedule}
                   cancellingId={cancellingId}
                 />
               ))}
@@ -143,6 +154,8 @@ export default function ProfilePage() {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [cancellingId, setCancellingId] = useState(null);
+  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [reschedulingAppt, setReschedulingAppt] = useState(null);
 
   useEffect(() => {
     if (!user) return;
@@ -151,7 +164,20 @@ export default function ProfilePage() {
       .then(setAppointments)
       .catch(() => setAppointments([]))
       .finally(() => setLoading(false));
+
+    getBusinessSettings()
+      .then(setSettings)
+      .catch(() => setSettings(DEFAULT_SETTINGS));
   }, [user]);
+
+  const handleRescheduleDone = (newDate, newTime) => {
+    setAppointments((prev) =>
+      prev.map((a) =>
+        a.id === reschedulingAppt.id ? { ...a, date: newDate, time: newTime } : a
+      )
+    );
+    setReschedulingAppt(null);
+  };
 
   const handleCancel = async (appointmentId) => {
     const ok = await confirm('Bu randevuyu iptal etmek istediğinize emin misiniz?', {
@@ -246,6 +272,7 @@ export default function ProfilePage() {
           defaultOpen={true}
           showCancel={true}
           onCancel={handleCancel}
+          onReschedule={setReschedulingAppt}
           cancellingId={cancellingId}
         />
 
@@ -277,6 +304,15 @@ export default function ProfilePage() {
           </button>
         </div>
       </div>
+
+      {reschedulingAppt && (
+        <RescheduleModal
+          appt={reschedulingAppt}
+          settings={settings}
+          onClose={() => setReschedulingAppt(null)}
+          onDone={handleRescheduleDone}
+        />
+      )}
     </section>
   );
 }
