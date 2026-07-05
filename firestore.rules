@@ -1,0 +1,55 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Yardımcı fonksiyonlar ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // admins koleksiyonunda kullanıcının UID'i ile bir doküman varsa admin'dir.
+    // exists() güvenlik kurallarını bypass eder, bu yüzden admin dokümanını
+    // okuma izni olmasa bile bu kontrol çalışır.
+    function isAdmin() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // --- admins: kullanıcı yalnızca KENDİ admin dokümanını okuyabilir ---
+    // (AuthContext'teki isAdmin kontrolü için). Yazma sadece Console'dan yapılır.
+    match /admins/{uid} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // --- appointments ---
+    // Giriş yapan herkes okuyabilir (müsaitlik/slot hesabı için gerekli).
+    // Kullanıcı yalnızca kendi adına randevu oluşturabilir.
+    // Durum güncelleme / silme sadece admin.
+    match /appointments/{id} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() &&
+        request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // --- staff: herkes okuyabilir (ana sayfa + randevu), yazma sadece admin ---
+    match /staff/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // --- gallery: herkes okuyabilir (ana sayfa), yazma sadece admin ---
+    match /gallery/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // --- blockedSlots: giriş yapan okuyabilir (müsaitlik), yazma sadece admin ---
+    match /blockedSlots/{id} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+  }
+}
