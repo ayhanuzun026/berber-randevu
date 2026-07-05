@@ -5,7 +5,7 @@ export default function LoadingSpinner({ text = 'Yükleniyor...' }) {
     <div className="spinner">
       <div className="spinner__emblem">
         <span className="spinner__ring" />
-        <img src="/logo.png" alt="" className="spinner__logo" />
+        <img src="/esspor.svg" alt="" className="spinner__logo" />
       </div>
       {text && <p className="spinner__text">{text}</p>}
     </div>
