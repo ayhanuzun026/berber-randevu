@@ -4,25 +4,61 @@
   align-items: center;
   justify-content: center;
   padding: 4rem 2rem;
-  gap: 1rem;
+  gap: 1.1rem;
 }
 
-.spinner__circle {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--color-border);
-  border-top-color: var(--color-primary);
+/* Amblem + dönen halka */
+.spinner__emblem {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spinner__ring {
+  position: absolute;
+  inset: 0;
+  border: 2px solid transparent;
+  border-top-color: var(--color-primary, #b8860b);
+  border-right-color: var(--color-primary, #b8860b);
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  animation: spin 1s linear infinite;
+}
+
+.spinner__logo {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  animation: emblem-pulse 1.4s ease-in-out infinite;
 }
 
 .spinner__text {
   font-size: 0.9rem;
-  color: var(--color-text-muted);
+  color: var(--color-text-muted, #6b7280);
+  letter-spacing: 0.02em;
 }
 
 @keyframes spin {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Amblem nabzı: hafif büyüyüp küçülür + nefes alır gibi opaklık */
+@keyframes emblem-pulse {
+  0%, 100% {
+    transform: scale(0.9);
+    opacity: 0.75;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner__ring { animation-duration: 2s; }
+  .spinner__logo { animation: none; }
 }
