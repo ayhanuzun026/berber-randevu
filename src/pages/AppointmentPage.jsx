@@ -113,6 +113,13 @@ export default function AppointmentPage() {
     return 'available';
   };
 
+  // Seçim sonrası "İleri/Onayla" alanına yumuşak kaydırma
+  const scrollToNav = () => {
+    setTimeout(() => {
+      navRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+  };
+
   const canGoNext = () => {
     switch (step) {
       case 0:
@@ -302,9 +309,7 @@ export default function AppointmentPage() {
                                 }`}
                                 onClick={() => {
                                   setSelectedStaff(staff);
-                                  setTimeout(() => {
-                                    navRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                  }, 100);
+                                  scrollToNav();
                                 }}
                               >
                                 <div className="appointment__staff-avatar">
@@ -356,6 +361,7 @@ export default function AppointmentPage() {
                     onClick={() => {
                       setSelectedDate(date);
                       setSelectedTime(null);
+                      scrollToNav();
                     }}
                   >
                     <span className="appointment__date-day">
@@ -418,7 +424,11 @@ export default function AppointmentPage() {
                       className={`appointment__time-card ${
                         isSelected ? 'appointment__time-card--selected' : ''
                       } appointment__time-card--${status}`}
-                      onClick={() => !isDisabled && setSelectedTime(slot)}
+                      onClick={() => {
+                        if (isDisabled) return;
+                        setSelectedTime(slot);
+                        scrollToNav();
+                      }}
                       disabled={isDisabled}
                     >
                       {slot}
